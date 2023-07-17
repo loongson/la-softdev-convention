@@ -1,0 +1,226 @@
+= Software Development and Build Convention for LoongArch Architectures
+Version 0.1
+Copyright © Loongson Technology 2023. All rights reserved.
+:doctype: article
+:toc: left
+:sectnums:
+
+== Abstract
+
+This document is a comprehensive guide to software development and building convention for LoongArch Architecture Chips.
+
+== Keywords
+
+LoongArch chip features, Software development, Compiler constraints, Kernel constraints
+
+== Version History
+
+- **0.1**
+    * initial version.
+
+== Introduction
+
+This document provides an overview of the software development construction convention for LoongArch Architecture Chips. It defines the specific requirements and constraints related to meeting convention, ensuring compatibility, handling compilers and kernels, and building operating system software packages.
+
+That includes constraints on:
+
+[loweralpha]
+. Compatibility requirements: It outlines the specific requirements and constraints related to ensuring compatibility with LoongArch Architecture Chips.
+. Compiler constraints: It defines the limitations and considerations for software development in terms of compilers used for LoongArch Architecture Chips.
+. Kernel limitations: It specifies the restrictions and guidelines for developing software that interacts with the kernel of LoongArch Architecture Chips.
+. Operating system software package building: It provides guidelines and convention for building software packages for operating systems compatible with LoongArch Architecture Chips.
+
+== Terms and abbreviations
+
+**GPR**
+
+General-purpose registers.
+
+**FPR**
+
+Floating-point registers.
+
+== Convention Target
+
+The Software Development and Build Convention for LoongArch Architectures is primarily targeted at Linux desktop operating systems, Linux server operating systems and Linux embedded operating systems.
+
+== Chip Feature Compatibility Requirements
+
+=== CPUCFG instruction
+The CPU needs to support the CPUCFG instruction and follow the convention of the CPUCFG instruction described in https://loongson.github.io/LoongArch-Documentation/LoongArch-Vol1-EN.html#_cpucfg[__LoongArch Architecture Reference Manual Volume 1__]. CPUCFG.1.bit25 equals 1 is used to determine whether the CRC instruction is supported.The CPU reads the lower 8 bits of the 0-offset address through the IOCSR method, and the return value is not 0 indicating that it supports the chip configuration version register, feature register, manufacturer name register and chip name register. The definitions of each register are as follows.
+
+[options="header"]
+|===============================================================================================
+| Registers                           | Offset Address                   | Bit Width            
+| Chip Configuration Version Register | IOCSR Space Offset Address: 0x0  | Register Width: 8bits
+| Chip Feature Register               | IOCSR Space Offset Address: 0x8  | Register Width: 32bit
+| Manufacturer Name Register          | IOCSR Space Offset Address: 0x10 | Register Width: 64bit
+| Chip Name Register                  | IOCSR Space Offset Address: 0x20 | Register Width: 64bit
+|===============================================================================================
+
+[options="header"]
+|================================================================================================================================
+| Bit Field | Field Name         | Access | Description                                                                          
+| 0         | Centigrade         | R      | When set to 1, indicates CSR[0x428] is valid                                         
+| 1         | Node counter       | R      | When set to 1, indicates CSR[0x408] is valid                                         
+| 2         | MSI                | R      | When set to 1, indicates MSI is available                                            
+| 3         | EXT_IOI            | R      | When set to 1, indicates EXT_IOI is available                                        
+| 4         | IPI_percore        | R      | When set to 1, indicates IPI sending is done via CSR private address                 
+| 5         | Freq_percore       | R      | When set to 1, indicates frequency adjustment is done via CSR private address        
+| 6         | Freq_scale         | R      | When set to 1, indicates dynamic frequency scaling is available                      
+| 7         | DVFS_v1            | R      | When set to 1, indicates dynamic voltage and frequency scaling (DVFS) v1 is available
+| 8         | Tsensor            | R      | When set to 1, indicates temperature sensor is available                             
+| 9         | Interrupt Decoding | R      | Interrupt pin decoding mode is available                                             
+| 10        | Flat mode          | R      | Traditional compatibility mode                                                       
+| 11        | Guest Mode         | WR     | KVM virtual machine mode                                                             
+| 12        | Freq_scale_16      | R      | When set to 1, indicates support for 16-level frequency scaling mode                 
+| 13        | Int Remap          | R      | When set to 1, indicates support for interrupt remapping mechanism                   
+| 14        | SE enabled         | WR     | SE function is enabled                                                               
+|================================================================================================================================
+
+=== Device Driver Compatibility
+The internal functional module register interface of the CPU needs to ensure compatibility between chips.
+
+- For non-PCI devices of the CPU or bridge chip, their register definitions need to ensure forward compatibility to ensure the normal use of their basic functions by the kernel. For example, non-PCI devices currently used by the kernel include: interrupt controllers (traditional interrupts, extended interrupts), UART, PWM, ACPI, RTC, GPIO.
+- For PCI devices, identification is done through Vendor ID, Device ID, and Revision ID, and software compatibility under the same ID needs to be ensured.
+
+=== Vector instruction support
+Desktop and server chips default to supporting 128-bit vector instructions.
+
+=== Unaligned memory access support
+Desktop and server chips default to supporting unaligned memory access.
+
+
+== Compiler constraints
+
+=== Compiler constraints for desktop and server operating systems
+
+When building desktop and server operating systems, developers should enable the -mno-strict-align compilation option of the compiler by default.
+
+=== Compiler constraints for embedded operating systems
+
+When building an embedded operating system, developers should enable the -mstrict-align compilation option of the compiler by default.
+
+=== Architecture-related C/C++ pre-defined macros.
+
+link:https://github.com/loongson/LoongArch-Documentation/blob/main/docs/LoongArch-toolchain-conventions-EN.adoc#cc-preprocessor-built-in-macro-definitions[upstream documentation]
+[options="header"]
+|========================================================================================================================================================================================================================================================================
+| Name                       | Expanded Value                                | Description                                                                                                                                                                               
+| `\\__loongarch__`         | `1`                                           | Target architecture is LoongArch                                                                                                                                                          
+| `__loongarch_grlen`        | `64` `32`                                     | Bit-width of GPR                                                                                                                                                                          
+| `__loongarch_frlen`        | `0` `32` `64`                                 | Bit-width of FPR (`0` if no FPU)                                                                                                                                                          
+| `__loongarch_arch`         | `"loongarch64"` `"la464"`                     | Target CPU name specified by `-march`. If not specified, defaults to the compiler-defined default. If `-march=native` is specified, then it is automatically detected by the compiler
+| `__loongarch_tune`         | `"loongarch64"` `"la464"`                     | Target CPU name specified by `-mtune`. If not specified, it defaults to the same as `__loongarch_arch`. If `-mtune=native` is specified, then it is automatically detected by the compiler
+| `__loongarch_lp64`         | Undefined or  `1`                             | ABI uses 64-bit GPR for parameter passing and follows LP64 data model                                                                                                                     
+| `__loongarch_hard_float`   | Undefined or `1`                              | ABI uses FPR for parameter passing                                                                                                                                                        
+| `__loongarch_soft_float`   | Undefined or  `1`                             | ABI does not use FPR for parameter passing                                                                                                                                                
+| `__loongarch_single_float` | Undefined or  `1`                             | ABI only uses 32-bit FPR for parameter passing                                                                                                                                            
+| `__loongarch_double_float` | Undefined or  `1`                             | ABI uses 64-bit FPR for parameter passing                                                                                                                                                 
+|========================================================================================================================================================================================================================================================================
+
+=== Debian Multiarch Identifiers (Convention Target Triplet)
+
+[options="header"]
+|======================================================================
+| ABI Type        | C Library | Kernel      | Multiarch Identifier     
+| lp64d / base    | glibc     | Linux       | loongarch64-linux-gnu    
+| lp64f / base    | glibc     | Linux       | loongarch64-linux-gnuf32 
+| lp64s / base    | glibc     | Linux       | loongarch64-linux-gnusf  
+|======================================================================
+
+== Kernel Constraints
+
+=== Kernel Development
+
+The kernel needs to obtain CPU features through CPUCFG instruction, and the application obtains CPU features through the getauxval system call provided by the kernel.
+
+(1)The kernel needs to support the corresponding functions based on the CPUCFG instruction and CPU feature registers, to achieve compatible operation on different model CPUs using the same kernel binary;
+
+(2)The kernel exports the CPU features supported by the system through HWCAP (a 32-bit unsigned data), and application software identifies the CPU features supported by the system based on HWCAP. HWCAP is defined as follows:
+
+[.text-center]
+Table 1 HWCAP Definitions
+
+[options="header"]
+|==========================================================
+| Bit Field | Meaning                                      
+| 0         | Supports cpucfg instruction                  
+| 1         | Supports atomic instructions                 
+| 2         | Supports unaligned access                    
+| 3         | Supports single/double precision FP          
+| 4         | Supports 128-bit vector extension            
+| 5         | Supports 256-bit vector extension            
+| 6         | Supports 32-bit CRC instruction              
+| 7         | Supports complex vector operation instruction
+| 8         | Supports cryptographic vector instruction    
+| 9         | Supports virtualization extension            
+| 10        | Supports x86 binary translation extension    
+| 11        | Supports ARM binary translation extension    
+| 12        | Supports MIPS binary translation extension   
+|==========================================================
+
+Applications can use HWCAP as follows:
+
+The CPU characteristic data can be obtained through getauxval(AT_HWCAP), and the corresponding CPU characteristic can be detected according to the HWCAP definition.
+
+(3)The kernel exports CPU information through /proc/cpuinfo, which is only used for display and not for application software's CPU feature detection. The format of cpuinfo is as follows:
+
+[.text-center]
+Table 2 cpuinfo format
+
+[options="header"]
+|==========================================================================================================================================
+| Field Name          | Meaning                                                                                                            
+| system type         | system type                                                                                                        
+| processor           | system-wide processor core ID                                                                                      
+| package             | package ID                                                                                                         
+| core                | internal core ID of the package (if a package includes n processor cores, the valid range of core is from 0 to n-1)
+| CPU Family          | CPU family                                                                                                         
+| Model Name          | CPU model name                                                                                                     
+| CPU Revision        | CPU revision number                                                                                                
+| FPU Revision        | FPU revision number                                                                                                
+| CPU MHz             | maximum frequency supported by the CPU                                                                             
+| BogoMIPS            | BogoMIPS                                                                                                           
+| TLB Entries         | number of TLBs per processor core                                                                                  
+| Address Sizes       | physical and virtual address bit sizes                                                                             
+| ISA                 | instruction set architecture                                                                                       
+| Features            | CPU features                                                                                                       
+| Hardware Watchpoint | hardware watchpoint information                                                                                    
+|==========================================================================================================================================
+
+=== Kernel Build
+
+For desktop and server operating systems, the kernel defaults to supporting non-aligned access builds.
+
+For embedded operating systems, the kernel needs to be built with the -mstrict-align compilation option for aligned access.
+
+== Operating System Package Build Requirements
+
+=== Desktop and Server Operating System Build Requirements
+
+Desktop operating systems need to support CPU platforms with at least 128-bit vector units.
+
+The desktop operating system compilation toolchain should enable the -mno-strict-align compilation option by default and disable auto-vectorization.
+
+=== Embedded Operating System Requirements
+
+Embedded operating systems need to support CPU platforms without vector units.
+
+The embedded operating system compilation toolchain should enable the -mstrict-align compilation option by default and disable auto-vectorization.
+
+
+== Compatibility Requirements for Software Development
+
+=== Extended Instruction Recognition
+New extended instructions should be identified using getauxval.For the specific usage method of getauxval and the meaning of parameters, please refer to xref:_kernel_development[_Kernel Development_].
+
+=== Compiler Vector Instruction Support Detection
+To ensure compatibility, vectorization should at least consider checking the characteristics of the compiler and runtime platform. During compilation, check that the compiler supports the vector instruction set before compiling the binary with vectorization enabled. During runtime, check that the runtime platform supports the vector instruction set before initializing/registering the corresponding optimization interface.
+
+=== Compile-time and Runtime Checks
+Compatibility should also be considered for microstructure or differences between different instruction set versions, and both compile-time and runtime checks should be implemented.
+
+=== Compatibility of LA32R and LA64
+LA32R and LA64 are compatible. Since there are differences in the underlying integer instruction sets between the two, developers are advised to abstract the required basic integer instructions as macros and point them to specific instructions on different platforms.
+
