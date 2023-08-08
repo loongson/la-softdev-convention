@@ -112,6 +112,7 @@ link:https://github.com/loongson/LoongArch-Documentation/blob/main/docs/LoongArc
 | `__loongarch_frlen`        | `0` `32` `64`                                 | Bit-width of FPR (`0` if no FPU)                                                                                                                                                          
 | `__loongarch_arch`         | `"loongarch64"` `"la464"`                     | Target CPU name specified by `-march`. If not specified, defaults to the compiler-defined default. If `-march=native` is specified, then it is automatically detected by the compiler
 | `__loongarch_tune`         | `"loongarch64"` `"la464"`                     | Target CPU name specified by `-mtune`. If not specified, it defaults to the same as `__loongarch_arch`. If `-mtune=native` is specified, then it is automatically detected by the compiler
+| `__loongarch_ilp32`        | Undefined or  `1`                             | ABI uses 32-bit GPR for parameter passing and follows ILP32 data model  
 | `__loongarch_lp64`         | Undefined or  `1`                             | ABI uses 64-bit GPR for parameter passing and follows LP64 data model                                                                                                                     
 | `__loongarch_hard_float`   | Undefined or `1`                              | ABI uses FPR for parameter passing                                                                                                                                                        
 | `__loongarch_soft_float`   | Undefined or  `1`                             | ABI does not use FPR for parameter passing                                                                                                                                                
@@ -124,6 +125,9 @@ link:https://github.com/loongson/LoongArch-Documentation/blob/main/docs/LoongArc
 [options="header"]
 |======================================================================
 | ABI Type        | C Library | Kernel      | Multiarch Identifier     
+| ilp32d / base   | glibc     | Linux       | loongarch32-linux-gnu    
+| ilp32f / base   | glibc     | Linux       | loongarch32-linux-gnuf32 
+| ilp32s / base   | glibc     | Linux       | loongarch32-linux-gnusf  
 | lp64d / base    | glibc     | Linux       | loongarch64-linux-gnu    
 | lp64f / base    | glibc     | Linux       | loongarch64-linux-gnuf32 
 | lp64s / base    | glibc     | Linux       | loongarch64-linux-gnusf  
